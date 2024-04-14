@@ -19,7 +19,13 @@ function App() {
         url,
         verb,
       },
-    });
+    })
+      .then((e) => {
+        console.log("success", e);
+      })
+      .catch((e) => {
+        console.log("error", e);
+      });
   }
 
   return (
