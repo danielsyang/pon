@@ -1,14 +1,4 @@
-use reqwest::{Response, StatusCode};
-
-pub enum Status {
-    OK,
-    NOTFOUND,
-}
-
-#[derive(serde::Serialize)]
-pub struct PonError {
-    message: String,
-}
+use reqwest::StatusCode;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CallRequest {
@@ -31,10 +21,10 @@ pub enum Verb {
 }
 
 #[tauri::command]
-pub async fn send_request(params: CallRequest) -> Result<CallResponse, PonError> {
+pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallResponse> {
     println!("Received request VERB: {:?}", params.verb);
     // let url = params.url;
-    let url = "http://localhost:3000/";
+    let url = "http://localhost:3000/v1/chat-message";
 
     match params.verb {
         Verb::GET => match reqwest::get(url).await {
@@ -42,25 +32,25 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, PonError>
                 StatusCode::OK => {
                     println!("StatusCode::OK: {:?}", resp);
 
-                    return Ok(CallResponse {
-                        status: 200,
-                        body: "Hello".to_string(),
-                    });
+                    let body = resp.text().await.unwrap();
+
+                    return Ok(CallResponse { status: 200, body });
                 }
                 StatusCode::NOT_FOUND => {
                     println!("StatusCode::NOT_FOUND: {:?}", resp);
 
-                    return Ok(CallResponse {
+                    return Err(CallResponse {
                         status: 404,
-                        body: "Not found".to_string(),
+                        body: resp.text().await.unwrap(),
                     });
                 }
                 _ => {
                     panic!("Not implemented")
                 }
             },
-            Err(e) => Err(PonError {
-                message: e.to_string(),
+            Err(e) => Err(CallResponse {
+                status: 500,
+                body: e.to_string(),
             }),
 
             _ => {
