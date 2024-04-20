@@ -1,4 +1,7 @@
-use reqwest::StatusCode;
+use reqwest::{
+    header::{self, HeaderMap},
+    StatusCode,
+};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CallRequest {
@@ -7,9 +10,22 @@ pub struct CallRequest {
 }
 
 #[derive(Debug, serde::Serialize)]
+pub struct HeadersResponse {
+    #[serde(rename(serialize = "xPoweredBy"))]
+    x_powered_by: String,
+    #[serde(rename(serialize = "contentType"))]
+    content_type: String,
+    #[serde(rename(serialize = "contentLength"))]
+    content_length: u32,
+    etag: String,
+    connection: String,
+}
+
+#[derive(Debug, serde::Serialize)]
 pub struct CallResponse {
     status: u16,
     body: String,
+    headers: Option<HeadersResponse>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -30,11 +46,16 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallRespo
         Verb::GET => match reqwest::get(url).await {
             Ok(resp) => match resp.status() {
                 StatusCode::OK => {
-                    println!("StatusCode::OK: {:?}", resp);
+                    let response = resp.headers().clone();
+                    let headers = get_header_object(response);
 
                     let body = resp.text().await.unwrap();
 
-                    return Ok(CallResponse { status: 200, body });
+                    return Ok(CallResponse {
+                        status: 200,
+                        body,
+                        headers: Some(headers),
+                    });
                 }
                 StatusCode::NOT_FOUND => {
                     println!("StatusCode::NOT_FOUND: {:?}", resp);
@@ -42,6 +63,7 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallRespo
                     return Err(CallResponse {
                         status: 404,
                         body: resp.text().await.unwrap(),
+                        headers: None,
                     });
                 }
                 _ => {
@@ -51,6 +73,7 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallRespo
             Err(e) => Err(CallResponse {
                 status: 500,
                 body: e.to_string(),
+                headers: None,
             }),
 
             _ => {
@@ -59,6 +82,33 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallRespo
         },
         _ => {
             panic!("Not implemented")
+        }
+    }
+}
+
+fn get_header_object(header: HeaderMap) -> HeadersResponse {
+    match (
+        header.get("x-powered-by"),
+        header.get("content-type"),
+        header.get("content-length"),
+        header.get("etag"),
+        header.get("connection"),
+    ) {
+        (
+            Some(x_powered_by),
+            Some(content_type),
+            Some(content_length),
+            Some(etag),
+            Some(connection),
+        ) => HeadersResponse {
+            x_powered_by: x_powered_by.to_str().unwrap().to_string(),
+            content_type: content_type.to_str().unwrap().to_string(),
+            content_length: content_length.to_str().unwrap().parse::<u32>().unwrap(),
+            etag: etag.to_str().unwrap().to_string(),
+            connection: connection.to_str().unwrap().to_string(),
+        },
+        _ => {
+            panic!("{}", format!("Invalid headers {:?}", header));
         }
     }
 }

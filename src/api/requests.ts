@@ -16,9 +16,18 @@ interface SendRequestParams {
   verb: HTTP_VERBS;
 }
 
+export interface HeadersResponse {
+  xPoweredBy: string;
+  contentType: string;
+  contentLength: number;
+  etag: string;
+  connection: string;
+}
+
 interface SendRequestResponse {
   status: number;
   body: string;
+  headers?: HeadersResponse;
 }
 
 export async function sendRequest({

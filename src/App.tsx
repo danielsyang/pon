@@ -3,7 +3,7 @@ import { Button, Input, Select } from "antd";
 
 import { HTTP_VERBS, sendRequest } from "./api/requests";
 import { useMutation } from "@tanstack/react-query";
-import ResponseBox from "./components/ResponseBox";
+import ResponseBox from "./components/responseBox/Container";
 import RequestBox from "./components/RequestBox";
 
 const HTTP_VERBS_OPTIONS = [
@@ -59,7 +59,7 @@ function App() {
 
       <div className="grid grid-cols-2 mt-4">
         <RequestBox />
-        <ResponseBox body={data?.body || ""} />
+        <ResponseBox body={data?.body} />
       </div>
     </div>
   );
