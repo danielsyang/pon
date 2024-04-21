@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Input, Select } from "antd";
 
 import { HTTP_VERBS, sendRequest } from "./api/requests";
 import { useMutation } from "@tanstack/react-query";
 import ResponseBox from "./components/responseBox/Container";
 import RequestBox from "./components/RequestBox";
+import { match, P } from "ts-pattern";
+import EmptyState from "./components/responseBox/EmptyState";
 
 const HTTP_VERBS_OPTIONS = [
   { value: HTTP_VERBS.GET, label: <span>GET</span> },
@@ -20,19 +22,16 @@ function App() {
     mutationFn: sendRequest,
   });
 
-  async function greet() {
+  async function onHandleAction() {
     await mutateAsync({
       url,
       verb,
-    })
-      .then((e) => {
-        console.log("success", e);
-        console.log("response", e);
-      })
-      .catch((e) => {
-        console.log("error", e);
-      });
+    });
   }
+
+  useEffect(() => {
+    console.log("understanding", error, data);
+  }, [error, data]);
 
   return (
     <div className="m-4">
@@ -40,7 +39,7 @@ function App() {
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          greet();
+          onHandleAction();
         }}
       >
         <Select
@@ -54,12 +53,15 @@ function App() {
           placeholder="Enter your url"
           status={error ? "error" : undefined}
         />
-        <Button htmlType="submit">Greet</Button>
+        <Button htmlType="submit">Send</Button>
       </form>
 
       <div className="grid grid-cols-2 mt-4">
         <RequestBox />
-        <ResponseBox body={data?.body} />
+        {match(data)
+          .with(P.nullish, () => <EmptyState />)
+          .with(P.nonNullable, (resp) => <ResponseBox response={resp} />)
+          .exhaustive()}
       </div>
     </div>
   );

@@ -1,7 +1,4 @@
-use reqwest::{
-    header::{self, HeaderMap},
-    StatusCode,
-};
+use reqwest::{header::HeaderMap, StatusCode};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct CallRequest {
@@ -22,7 +19,14 @@ pub struct HeadersResponse {
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct CallResponse {
+pub struct ActionResponse {
+    status: u16,
+    body: String,
+    headers: HeadersResponse,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ErrorResponse {
     status: u16,
     body: String,
     headers: Option<HeadersResponse>,
@@ -37,7 +41,7 @@ pub enum Verb {
 }
 
 #[tauri::command]
-pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallResponse> {
+pub async fn send_action(params: CallRequest) -> Result<ActionResponse, ErrorResponse> {
     println!("Received request VERB: {:?}", params.verb);
     // let url = params.url;
     let url = "http://localhost:3000/v1/chat-message";
@@ -51,37 +55,34 @@ pub async fn send_request(params: CallRequest) -> Result<CallResponse, CallRespo
 
                     let body = resp.text().await.unwrap();
 
-                    return Ok(CallResponse {
+                    return Ok(ActionResponse {
                         status: 200,
                         body,
-                        headers: Some(headers),
+                        headers,
                     });
                 }
                 StatusCode::NOT_FOUND => {
-                    println!("StatusCode::NOT_FOUND: {:?}", resp);
+                    let response = resp.headers().clone();
+                    let headers = get_header_object(response);
 
-                    return Err(CallResponse {
+                    return Err(ErrorResponse {
                         status: 404,
                         body: resp.text().await.unwrap(),
-                        headers: None,
+                        headers: Some(headers),
                     });
                 }
                 _ => {
                     panic!("Not implemented")
                 }
             },
-            Err(e) => Err(CallResponse {
+            Err(e) => Err(ErrorResponse {
                 status: 500,
                 body: e.to_string(),
                 headers: None,
             }),
-
-            _ => {
-                panic!("Not implemented")
-            }
         },
-        _ => {
-            panic!("Not implemented")
+        ver => {
+            panic!("Verb not implemented yet {:?}", ver)
         }
     }
 }

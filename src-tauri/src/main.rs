@@ -15,7 +15,7 @@ fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![controller::send_request])
+        .invoke_handler(tauri::generate_handler![controller::send_action])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

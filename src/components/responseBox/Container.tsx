@@ -1,29 +1,29 @@
 import { Tabs, TabsProps } from "antd";
 
-import EmptyState from "./EmptyState";
 import BodyRenderer from "./BodyRenderer";
-import { HeadersResponse } from "../../api/requests";
+import {
+  ResponseFailureSchemaType,
+  ResponseSchemaType,
+} from "../../api/requests";
+import HeaderRenderer from "./HeaderRenderer";
 
 interface ResponseBoxProps {
-  body?: string;
-  headers?: HeadersResponse;
+  response: ResponseSchemaType | ResponseFailureSchemaType;
 }
 
-export default function ResponseBox({ body, headers }: ResponseBoxProps) {
-  if (!body) {
-    return <EmptyState />;
-  }
-
+export default function ResponseBox({
+  response: { body, headers, status },
+}: ResponseBoxProps) {
   const items: TabsProps["items"] = [
     {
       key: "1",
       label: "Response",
-      children: <BodyRenderer body={body} />,
+      children: <BodyRenderer body={body} status={status} />,
     },
     {
       key: "2",
       label: "Headers",
-      children: <div>HEADER</div>,
+      children: <HeaderRenderer headers={headers} />,
     },
   ];
 
