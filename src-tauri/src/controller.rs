@@ -1,7 +1,7 @@
-use reqwest::{header::HeaderMap, StatusCode};
+use reqwest::{header::HeaderMap, Error, Response, StatusCode};
 
 #[derive(Debug, serde::Deserialize)]
-pub struct CallRequest {
+pub struct ActionRequest {
     url: String,
     verb: Verb,
 }
@@ -41,45 +41,20 @@ pub enum Verb {
 }
 
 #[tauri::command]
-pub async fn send_action(params: CallRequest) -> Result<ActionResponse, ErrorResponse> {
-    println!("Received request VERB: {:?}", params.verb);
-    // let url = params.url;
-    let url = "http://localhost:3000/v1/chat-message";
+pub async fn send_action(params: ActionRequest) -> Result<ActionResponse, ErrorResponse> {
+    let client = reqwest::Client::new();
+    let url = params.url;
+    // let url = "http://localhost:3000/v1/chat-message";
 
     match params.verb {
-        Verb::GET => match reqwest::get(url).await {
-            Ok(resp) => match resp.status() {
-                StatusCode::OK => {
-                    let response = resp.headers().clone();
-                    let headers = get_header_object(response);
+        Verb::GET => match client.get(url).send().await {
+            Ok(resp) => response_validator(resp).await,
+            Err(e) => unexpected_error_builder(e),
+        },
 
-                    let body = resp.text().await.unwrap();
-
-                    return Ok(ActionResponse {
-                        status: 200,
-                        body,
-                        headers,
-                    });
-                }
-                StatusCode::NOT_FOUND => {
-                    let response = resp.headers().clone();
-                    let headers = get_header_object(response);
-
-                    return Err(ErrorResponse {
-                        status: 404,
-                        body: resp.text().await.unwrap(),
-                        headers: Some(headers),
-                    });
-                }
-                _ => {
-                    panic!("Not implemented")
-                }
-            },
-            Err(e) => Err(ErrorResponse {
-                status: 500,
-                body: e.to_string(),
-                headers: None,
-            }),
+        Verb::POST => match client.post(url).send().await {
+            Ok(resp) => response_validator(resp).await,
+            Err(e) => unexpected_error_builder(e),
         },
         ver => {
             panic!("Verb not implemented yet {:?}", ver)
@@ -112,4 +87,44 @@ fn get_header_object(header: HeaderMap) -> HeadersResponse {
             panic!("{}", format!("Invalid headers {:?}", header));
         }
     }
+}
+
+async fn response_validator(resp: Response) -> Result<ActionResponse, ErrorResponse> {
+    match resp.status() {
+        StatusCode::OK => {
+            let response = resp.headers().clone();
+            let headers = get_header_object(response);
+
+            let body = resp.text().await.unwrap();
+
+            return Ok(ActionResponse {
+                status: 200,
+                body,
+                headers,
+            });
+        }
+        not_ok => expected_error_builder(resp, not_ok.as_u16()).await,
+    }
+}
+
+fn unexpected_error_builder(error: Error) -> Result<ActionResponse, ErrorResponse> {
+    Err(ErrorResponse {
+        status: 500,
+        body: error.to_string(),
+        headers: None,
+    })
+}
+
+async fn expected_error_builder(
+    response: Response,
+    status_number: u16,
+) -> Result<ActionResponse, ErrorResponse> {
+    let response_header = response.headers().clone();
+    let headers = get_header_object(response_header);
+
+    return Err(ErrorResponse {
+        status: status_number,
+        body: response.text().await.unwrap(),
+        headers: Some(headers),
+    });
 }
