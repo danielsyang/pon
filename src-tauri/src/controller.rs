@@ -4,6 +4,7 @@ use reqwest::{header::HeaderMap, Error, Response, StatusCode};
 pub struct ActionRequest {
     url: String,
     verb: Verb,
+    body: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -43,8 +44,10 @@ pub enum Verb {
 #[tauri::command]
 pub async fn send_action(params: ActionRequest) -> Result<ActionResponse, ErrorResponse> {
     let client = reqwest::Client::new();
-    let url = params.url;
-    // let url = "http://localhost:3000/v1/chat-message";
+    // let url = params.url;
+    let url = "http://localhost:3000/v1/chat-message";
+
+    println!("BODY: {:?}", params.body);
 
     match params.verb {
         Verb::GET => match client.get(url).send().await {

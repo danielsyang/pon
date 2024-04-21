@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Select } from "antd";
 
-import { HTTP_VERBS, sendRequest } from "./api/requests";
+import { HTTP_VERBS, actionSchema, sendRequest } from "./api/requests";
 import { useMutation } from "@tanstack/react-query";
 import ResponseBox from "./components/responseBox/Container";
 import RequestBox from "./components/RequestBox";
 import { match, P } from "ts-pattern";
 import EmptyState from "./components/responseBox/EmptyState";
+import { useAtom, useAtomValue } from "jotai";
+import { actionBodyAtom, actionUriAtom, actionVerbAtom } from "./state/action";
 
 const HTTP_VERBS_OPTIONS = [
   { value: HTTP_VERBS.GET, label: <span>GET</span> },
@@ -16,17 +18,26 @@ const HTTP_VERBS_OPTIONS = [
 ];
 
 function App() {
-  const [url, setUrl] = useState("");
-  const [verb, setVerb] = useState(HTTP_VERBS.GET);
+  const [url, setUrl] = useAtom(actionUriAtom);
+  const [verb, setVerb] = useAtom(actionVerbAtom);
+  const actionBody = useAtomValue(actionBodyAtom);
   const { mutateAsync, error, data } = useMutation({
     mutationFn: sendRequest,
   });
 
   async function onHandleAction() {
-    await mutateAsync({
+    console.log("actionBody", actionBody);
+    const result = actionSchema.safeParse({
       url,
       verb,
+      body: actionBody.length === 0 ? null : actionBody,
     });
+
+    if (!result.success) {
+      return;
+    }
+
+    await mutateAsync(result.data);
   }
 
   useEffect(() => {

@@ -12,9 +12,10 @@ export enum HTTP_VERBS {
   DELETE = "DELETE",
 }
 
-const requestSchema = z.object({
+export const actionSchema = z.object({
   url: z.string(),
   verb: z.nativeEnum(HTTP_VERBS),
+  body: z.string().nullable(),
 });
 
 const headersSchema = z.object({
@@ -47,18 +48,20 @@ const responseFailureSchema = z.object({
 
 export type ResponseSchemaType = z.infer<typeof responseSchema>;
 export type HeadersSchemaType = z.infer<typeof headersSchema>;
-export type RequestSchemaType = z.infer<typeof requestSchema>;
+export type ActionSchemaType = z.infer<typeof actionSchema>;
 export type ResponseFailureSchemaType = z.infer<typeof responseFailureSchema>;
 
 export async function sendRequest({
   url,
   verb,
-}: RequestSchemaType): Promise<ResponseSchemaType | ResponseFailureSchemaType> {
+  body,
+}: ActionSchemaType): Promise<ResponseSchemaType | ResponseFailureSchemaType> {
   try {
     const result = await invoke("send_action", {
       params: {
         url,
         verb,
+        body,
       },
     });
 
